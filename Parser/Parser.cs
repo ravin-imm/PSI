@@ -56,9 +56,12 @@ public class Parser {
       return Primary ();
    }
 
-   // primary = IDENTIFIER | INTEGER | REAL | STRING | "(" expression ")" | "not" primary .
+   // primary = IDENTIFIER | INTEGER | REAL | STRING | "(" expression ")" | "not" primary | IDENTIFIER arglist .
    NExpr Primary () {
-      if (Match (IDENT)) return new NIdentifier (Prev);
+      if (Match (IDENT)) {
+         var prev = Prev;
+         return (Match (OPEN) ? new NFnCall (prev, ArgList ()) : new NIdentifier (prev));
+      }
       if (Match (INTEGER, REAL, BOOLEAN, CHAR, STRING)) return new NLiteral (Prev);
       if (Match (NOT)) return new NUnary (Prev, Primary ());
       Expect (OPEN, "Expecting identifier or literal");
@@ -67,11 +70,27 @@ public class Parser {
       return expr;
    }
 
+   NExpr[] ArgList () {
+      List<NExpr> args = new ();
+      for (; ;) {
+         if (Match (EOF)) throw new Exception ($"Expecting ')'");
+         if (Match (CLOSE)) break;
+         else args.Add (Expression ());
+         if (Match (COMMA) && (Peek (CLOSE) || !args.Any ())) throw new Exception ($"Expecting en expression");
+      }
+      return args.ToArray ();
+   }
+
    // Helpers ---------------------------------------------
    // Expect to find a particular token
    void Expect (Token.E kind, string message) {
       if (!Match (kind)) throw new Exception (message);
    }
+
+   // Like match, but does not consume the token
+   bool Peek (params Token.E[] kinds)
+      => kinds.Contains (mToken.Kind);
+
 
    // Match and consume a token on match
    bool Match (params Token.E[] kinds) {

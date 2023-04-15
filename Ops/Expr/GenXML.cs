@@ -19,4 +19,10 @@ public class ExprXML : Visitor<XElement> {
       elem.Add (e1); elem.Add (e2);
       return elem;
    }
+
+   public override XElement Visit (NFnCall fnCal) {
+      XElement elem = new ("Call", new XAttribute ("Name", fnCal.Name.Text), new XAttribute ("Type", fnCal.Type));
+      foreach (var exp in fnCal.Params) elem.Add (exp.Accept (this));
+      return elem;
+   }
 }

@@ -39,20 +39,22 @@ public class Token {
    // Utility function used to echo an error to the console
    public void PrintError () {
       if (Kind != ERROR) throw new Exception ("PrintError called on a non-error token");
-      string s = $"File: {Source.FileName}", msg = $"{s}\r\n{new string ('\u2500', s.Length)}\r\n";
-      var (idx, n, space) = (Line - 2, Source.Lines.Length, new string (" "));
-      for (int i = idx; i <= Line; i++, idx++)
-         if (idx >= 1) msg += $"{idx,4}\u2502{space}{Source.Lines[idx - 1]}\r\n";
-      Write (msg);
-      ForegroundColor = ConsoleColor.Yellow; var nSpaces = Column + 5;
-      CursorLeft = nSpaces;
-      Write ("^\r\n");
-      CursorLeft = Math.Max (0, (nSpaces - Text.Length / 2) + 1);
-      WriteLine (Text);
-      ResetColor (); msg = "";
-      for (int i = 0; i < 2 && idx <= n; i++, idx++) 
-         msg += $"{idx,4}\u2502{space}{Source.Lines[idx - 1]}\r\n";
-      Write (msg);
+      string s = $"File: {Source.FileName}";
+      WriteLine ($"{s}\r\n{new string ('\u2500', s.Length)}");
+      var (idx, n, lines) = (Line - 2, Source.Lines.Length, Source.Lines);
+      for (int i = 0; i < 5; i++, idx++) {
+         if (idx < 1) continue;
+         if (idx > n) break;
+         WriteLine ($"{idx,4}\u2502 {lines[idx - 1]}");
+         if (idx == Line) {
+            ForegroundColor = ConsoleColor.Yellow; var (nSpaces, len) = (Column + 5, Text.Length);
+            CursorLeft = nSpaces;
+            WriteLine ("^");
+            CursorLeft = Math.Max (0, Math.Min (nSpaces - len / 2, WindowWidth - len) + 1);
+            WriteLine (Text);
+            ResetColor ();
+         }
+      }
    }
 
    // Helper used by the parser (maps operator sequences to E values)

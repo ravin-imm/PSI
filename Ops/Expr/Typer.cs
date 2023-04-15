@@ -37,4 +37,15 @@ public class ExprTyper : Visitor<NType> {
          _ => Error
       };
    }
+
+   public override NType Visit (NFnCall fnCal) {
+      var types = fnCal.Params.Select (exp => exp.Accept (this)).ToArray ();
+      return fnCal.Type = (fnCal.Name.Text, types.Length) switch {
+         ("sin", 1) when (types[0] is Real or Int) => Real,
+         ("atan2", 2) when (types.All (a => a is Real or Int)) =>  Real,
+         ("length", 1) when (types[0] is NType.String) =>  Int,
+         ("random", 0) => Int,
+         _ => Error
+      };
+   }
 }
