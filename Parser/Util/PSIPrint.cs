@@ -1,6 +1,8 @@
 ﻿// ⓅⓈⒾ  ●  Pascal Language System  ●  Academy'23
 // PSIPrint.cs ~ Prints a PSI syntax tree in Pascal format
 // ─────────────────────────────────────────────────────────────────────────────
+using static PSI.Token;
+
 namespace PSI;
 
 public class PSIPrint : Visitor<StringBuilder> {
@@ -25,17 +27,12 @@ public class PSIPrint : Visitor<StringBuilder> {
 
    public override StringBuilder Visit (NProcFnDecls d) {
       foreach (var fn in d.Fns) fn.Accept (this);
-      foreach (var proc in d.Procs) proc.Accept (this);
       return S;
    }
 
-   public override StringBuilder Visit (NProcDecl d) {
-      NWrite ($"\nprocedure {d.Name} "); d.Params.Accept (this); Write (";");
-      return d.Block.Accept (this);
-   }
-
    public override StringBuilder Visit (NFnDecl d) {
-      NWrite ($"\nfunction {d.Name} "); d.Params.Accept (this); Write ($" : {d.Type};");
+      var iFn = d.Type != NType.Void; var s = iFn ? "function" : "procedure";
+      NWrite ($"\n{s} {d.Name} "); d.Params.Accept (this); if (iFn) Write ($" : {d.Type};");
       return d.Block.Accept (this);
    }
 
@@ -88,14 +85,12 @@ public class PSIPrint : Visitor<StringBuilder> {
    }
 
    public override StringBuilder Visit (NIfStmt i) {
-      NWrite ("if "); i.Exp.Accept (this); Write (" then"); N++;
-      i.Stmt.Accept (this); N--;
-      return S;
-   }
-
-   public override StringBuilder Visit (NElseStmt e) {
-      NWrite ("else"); N++;
-      e.Stmt.Accept (this); N--;
+      NWrite ("if "); i.Condition.Accept (this); Write (" then"); N++;
+      i.IfStmt.Accept (this); N--;
+      if (i.ElseStmt != null) {
+         NWrite ("else"); N++;
+         i.ElseStmt.Accept (this); N--;
+      }
       return S;
    }
 

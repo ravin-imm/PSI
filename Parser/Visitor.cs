@@ -10,7 +10,6 @@ public abstract class Visitor<T> {
    public abstract T Visit (NDeclarations d);
    public abstract T Visit (NVarDecl d);
    public abstract T Visit (NProcFnDecls d);
-   public abstract T Visit (NProcDecl d);
    public abstract T Visit (NFnDecl d);
    public abstract T Visit (NParams p);
 
@@ -21,7 +20,6 @@ public abstract class Visitor<T> {
    public abstract T Visit (NCallStmt c);
    public abstract T Visit (NWhileStmt w);
    public abstract T Visit (NIfStmt i);
-   public abstract T Visit (NElseStmt e);
    public abstract T Visit (NRepeatStmt r);
    public abstract T Visit (NForStmt f);
 

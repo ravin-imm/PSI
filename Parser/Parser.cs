@@ -46,13 +46,13 @@ public class Parser {
 
    // procfn-decls = { proc-decl | func-decl }
    NProcFnDecls ProcFnDecls () {
-      List<NProcDecl> procDecls = new (); List<NFnDecl> fnDecls = new List<NFnDecl> ();
+      List<NFnDecl> fnDecls = new List<NFnDecl> ();
       for (; ;) {
-         if (Peek (PROCEDURE)) procDecls.Add (ProcDecl ());
+         if (Peek (PROCEDURE)) fnDecls.Add (ProcDecl ());
          else if (Peek (FUNCTION)) fnDecls.Add (FuncDecl ());
          else break;
       }
-      return new (procDecls.ToArray (), fnDecls.ToArray ());
+      return new (fnDecls.ToArray ());
    }
 
    // var-decl = ident-list ":" type
@@ -62,10 +62,10 @@ public class Parser {
    }
 
    // proc-decl = "procedure" IDENT paramlist; block ";" .
-   NProcDecl ProcDecl () {
+   NFnDecl ProcDecl () {
       Expect (PROCEDURE); var name = Expect (IDENT); var paramsList = ParamList (); Expect (SEMI);
       var block = Block (); Expect (SEMI);
-      return new (name, paramsList, block);
+      return new (name, paramsList, NType.Void, block);
    }
 
    // func-decl = "function" IDENT paramlist ":" type; block ";" .
@@ -108,7 +108,6 @@ public class Parser {
          return CallStmt ();
       }
       if (Match (IF)) return IfStmt ();
-      if (Match (ELSE)) return ElseStmt ();
       if (Match (WHILE)) return WhileStmt ();
       if (Match (REPEAT)) return RepeatStmt ();
       if (Match (FOR)) return ForStmt ();
@@ -137,11 +136,11 @@ public class Parser {
    // if-stmt = "if" expression "then" statement["else" statement] .
    NIfStmt IfStmt () {
       var exp = Expression ();
-      Expect (THEN);
-      return new (exp, Stmt ());
+      Expect (THEN); var ifStmt = Stmt ();
+      NStmt? elseStmt = null;
+      if (Match (ELSE)) elseStmt = Stmt ();
+      return new (exp, ifStmt, elseStmt);
    }
-
-   NElseStmt ElseStmt () => new (Stmt ());
 
    // while-stmt = "while" expression "do" statement.
    NWhileStmt WhileStmt () {
