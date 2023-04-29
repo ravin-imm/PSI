@@ -10,7 +10,7 @@ public class Token {
       => (Source, Kind, Text, Line, Column) = (source, kind, text, line, column);
 
    public Token (string name)
-      => (Kind, Text) = (E.IDENT, name);     
+      => (Kind, Text) = (E.IDENT, name);
 
    public Tokenizer? Source { get; }
    public E Kind { get; }
@@ -24,7 +24,7 @@ public class Token {
       PROGRAM, VAR, IF, THEN, WHILE, ELSE, FOR, TO, DOWNTO,
       DO, BEGIN, END, PRINT, TYPE, NOT, OR, AND, MOD, WRITE,
       WRITELN, READ, LABEL, INTEGER, REAL, BOOLEAN, STRING, CHAR,
-      PROCEDURE, FUNCTION, REPEAT, UNTIL, _ENDKEYWORDS,
+      PROCEDURE, FUNCTION, REPEAT, UNTIL, CONST, _ENDKEYWORDS,
       // Operators
       ADD, SUB, MUL, DIV, NEQ, LEQ, GEQ, EQ, LT, GT, ASSIGN, 
       _ENDOPERATORS,

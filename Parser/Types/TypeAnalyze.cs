@@ -23,15 +23,33 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NDeclarations d) {
-      Visit (d.Vars); return Visit (d.Funcs);
+      Visit (d.Consts); Visit (d.Vars); return Visit (d.Funcs);
    }
 
    public override NType Visit (NVarDecl d) {
+      if (mSymbols.Consts.Any (a => a.Name.Text == d.Name.Text))
+         throw new ParseException (d.Name, "Constant with the same name already declared");
+      if (mSymbols.Vars.Any (a => a.Name.Text == d.Name.Text))
+         throw new ParseException (d.Name, "Variable with the same name already declared");
       mSymbols.Vars.Add (d);
       return d.Type;
    }
 
+   public override NType Visit (NConstDecl c) {
+      if (mSymbols.Consts.Any (a => a.Name.Text == c.Name.Text))
+         throw new ParseException (c.Name, "Constant with the same name already declared");
+      c.Value.Accept (this);
+      mSymbols.Consts.Add (c);
+      return c.Value.Type;
+   }
+
    public override NType Visit (NFnDecl f) {
+      if (mSymbols.Consts.Any (a => a.Name.Text == f.Name.Text))
+         throw new ParseException (f.Name, "Constant with the same function name already declared");
+      if (mSymbols.Vars.Any (a => a.Name.Text == f.Name.Text))
+         throw new ParseException (f.Name, "Variable with the same function name already declared");
+      if (mSymbols.Funcs.Any (a => a.Name.Text == f.Name.Text))
+         throw new ParseException (f.Name, "Function with the same function name already declared");
       mSymbols.Funcs.Add (f);
       return f.Return;
    }
@@ -74,7 +92,9 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NReadStmt r) {
-      throw new NotImplementedException ();
+      var v = r.Vars.FirstOrDefault (a => mSymbols.Find (a.Text) is not NVarDecl);
+      if (v != null) throw new ParseException (v, "Unknown variable");
+      return Void;
    }
 
    public override NType Visit (NWhileStmt w) {
@@ -88,7 +108,17 @@ public class TypeAnalyze : Visitor<NType> {
    }
 
    public override NType Visit (NCallStmt c) {
-      throw new NotImplementedException ();
+      if (mSymbols.Find (c.Name.Text) is NFnDecl d && d.Return is Void) {
+         var pLen = c.Params.Length;
+         if (pLen != d.Params.Length)
+            throw new ParseException (c.Name, $"No overload for procedure {c.Name.Text} takes {pLen} arguments");
+         for (int i = 0; i < pLen; i++) {
+            c.Params[i].Accept (this);
+            c.Params[i] = AddTypeCast (c.Name, c.Params[i], d.Params[i].Type);
+         }
+         return Void;
+      }
+      throw new ParseException (c.Name, "Unknown function");
    }
    #endregion
 
@@ -133,14 +163,25 @@ public class TypeAnalyze : Visitor<NType> {
       return bin.Type;
    }
 
-   public override NType Visit (NIdentifier d) {
-      if (mSymbols.Find (d.Name.Text) is NVarDecl v) 
-         return d.Type = v.Type;
-      throw new ParseException (d.Name, "Unknown variable");
-   }
+   public override NType Visit (NIdentifier d) =>
+      mSymbols.Find (d.Name.Text) switch {
+         NVarDecl v => d.Type = v.Type,
+         NConstDecl c => d.Type = c.Value.Accept (this),
+         _ => throw new ParseException (d.Name, "Unknown variable")
+      };
 
    public override NType Visit (NFnCall f) {
-      throw new NotImplementedException ();
+      if (mSymbols.Find (f.Name.Text) is NFnDecl d) {
+         var pLen = f.Params.Length;
+         if (pLen != d.Params.Length)
+            throw new ParseException (f.Name, $"No overload for function {f.Name.Text} takes {pLen} arguments");
+         for (int i = 0; i < pLen; i++) {
+            f.Params[i].Accept (this);
+            f.Params[i] = AddTypeCast (f.Name, f.Params[i], d.Params[i].Type);
+         }
+         return f.Type = d.Return;
+      }
+      throw new ParseException (f.Name, "Unknown function");
    }
 
    public override NType Visit (NTypeCast c) {

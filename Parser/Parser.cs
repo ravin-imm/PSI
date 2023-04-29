@@ -28,8 +28,10 @@ public class Parser {
    NBlock Block ()
       => new (Declarations (), CompoundStmt ());
 
-   // declarations = [var-decls] [procfn-decls] .
+   // declarations = [const-decls] [var-decls] [procfn-decls] .
    NDeclarations Declarations () {
+      // Assuming that all constants are declared the variables
+      var consts = Match (CONST) ? ConstDecls () : new NConstDecl[0];
       var variables = Match (VAR) ? VarDecls () : new NVarDecl[0];
       List<NFnDecl> funcs = new ();
       while (Match (FUNCTION, PROCEDURE)) {
@@ -40,7 +42,7 @@ public class Parser {
          Expect (SEMI);
          funcs.Add (new NFnDecl (name, pars, rtype, Block ()));
       }
-      return new (variables, funcs.ToArray ());
+      return new (consts, variables, funcs.ToArray ());
    }
 
    // ident-list = IDENT { "," IDENT }
@@ -60,6 +62,18 @@ public class Parser {
       }
       return vars.ToArray ();
    }
+
+   // const-decl = ident "=" expression;
+   NConstDecl[] ConstDecls () {
+      List<NConstDecl> consts = new ();
+      while (Peek (IDENT)) {
+         var name = Expect (IDENT); Expect (EQ); var value = Expression (); // We are using expression as the literal can have a unary operator
+         consts.Add (new (name, value));
+         Match (SEMI);
+      }
+      return consts.ToArray ();
+   }
+
 
    // type = integer | real | boolean | string | char
    NType Type () {
@@ -158,7 +172,7 @@ public class Parser {
    NExpr Expression () 
       => Equality ();
 
-   // equality = equality = comparison [ ("=" | "<>") comparison ] .
+   // equality = comparison [ ("=" | "<>") comparison ] .
    NExpr Equality () {
       var expr = Comparison ();
       if (Match (EQ, NEQ)) 

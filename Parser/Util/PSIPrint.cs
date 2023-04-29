@@ -14,6 +14,11 @@ public class PSIPrint : Visitor<StringBuilder> {
       => Visit (b.Declarations, b.Body);
 
    public override StringBuilder Visit (NDeclarations d) {
+      if (d.Consts.Length > 0) {
+         NWrite ("const"); N++;
+         foreach (var c in d.Consts) Visit (c);
+         N--;
+      }
       if (d.Vars.Length > 0) {
          NWrite ("var"); N++;
          foreach (var g in d.Vars.GroupBy (a => a.Type))
@@ -26,6 +31,9 @@ public class PSIPrint : Visitor<StringBuilder> {
 
    public override StringBuilder Visit (NVarDecl d)
       => NWrite ($"{d.Name} : {d.Type}");
+
+   public override StringBuilder Visit (NConstDecl c)
+      => NWrite ($"{c.Name} = {(c.Value as NLiteral)?.Value}"); // We will print only if the expression is a literal for now
 
    public override StringBuilder Visit (NFnDecl f) {
       NWrite (f.Return == NType.Void ? "procedure " : "function ");

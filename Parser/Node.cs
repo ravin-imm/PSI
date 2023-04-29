@@ -20,7 +20,7 @@ public record NBlock (NDeclarations Declarations, NCompoundStmt Body) : Node {
 }
 
 // The declarations section precedes the body of every block
-public record NDeclarations (NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
+public record NDeclarations (NConstDecl[] Consts, NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
 }
 
@@ -28,6 +28,12 @@ public record NDeclarations (NVarDecl[] Vars, NFnDecl[] Funcs) : Node {
 public record NVarDecl (Token Name, NType Type) : Node {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override string ToString () => $"{Type} {Name}";
+}
+
+// Declares a constant
+public record NConstDecl (Token Name, NExpr Value) : Node {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+   public override string ToString () => $"{Name} = {Value}";
 }
 
 // Declares a function (or procedure) 
