@@ -25,7 +25,13 @@ public class TypeAnalyze : Visitor<NType> {
    public override NType Visit (NDeclarations d) {
       Visit (d.Consts); Visit (d.Vars); return Visit (d.Funcs);
    }
-
+   public override NType Visit (NConstDecl c) {
+      if (mSymbols.Consts.Any (a => a.Name.Text == c.Name.Text))
+         throw new ParseException (c.Name, "Constant with the same name already declared");
+      c.Value.Accept (this);
+      mSymbols.Consts.Add (c);
+      return c.Value.Type;
+   }
    public override NType Visit (NVarDecl d) {
       if (mSymbols.Consts.Any (a => a.Name.Text == d.Name.Text))
          throw new ParseException (d.Name, "Constant with the same name already declared");
@@ -34,15 +40,6 @@ public class TypeAnalyze : Visitor<NType> {
       mSymbols.Vars.Add (d);
       return d.Type;
    }
-
-   public override NType Visit (NConstDecl c) {
-      if (mSymbols.Consts.Any (a => a.Name.Text == c.Name.Text))
-         throw new ParseException (c.Name, "Constant with the same name already declared");
-      c.Value.Accept (this);
-      mSymbols.Consts.Add (c);
-      return c.Value.Type;
-   }
-
    public override NType Visit (NFnDecl f) {
       if (mSymbols.Consts.Any (a => a.Name.Text == f.Name.Text))
          throw new ParseException (f.Name, "Constant with the same function name already declared");
@@ -51,6 +48,18 @@ public class TypeAnalyze : Visitor<NType> {
       if (mSymbols.Funcs.Any (a => a.Name.Text == f.Name.Text))
          throw new ParseException (f.Name, "Function with the same function name already declared");
       mSymbols.Funcs.Add (f);
+      foreach (var param in f.Params) param.Accept (this);
+
+      // The variables or the constants inside a function cannot have the function name or the 
+      // function parameters name
+      if (f.Body != null) {
+         var decls = f.Body.Declarations;
+         var v = decls.Vars.FirstOrDefault (a => { var t = a.Name.Text; return (t == f.Name.Text || f.Params.Any (b => b.Name.Text == t));});
+         if (v != null) throw new ParseException (v.Name, "Variable cannot have either the function name or the function parameter name");
+         var c = decls.Consts.FirstOrDefault (a => { var t = a.Name.Text; return (t == f.Name.Text || f.Params.Any (b => b.Name.Text == t));});
+         if (c != null) throw new ParseException (c.Name, "Constant cannot have either the function name or the function parameter name");
+         f.Body.Accept (this);
+      }
       return f.Return;
    }
    #endregion
@@ -60,11 +69,14 @@ public class TypeAnalyze : Visitor<NType> {
       => Visit (b.Stmts);
 
    public override NType Visit (NAssignStmt a) {
-      if (mSymbols.Find (a.Name.Text) is not NVarDecl v)
-         throw new ParseException (a.Name, "Unknown variable");
+      var nType = mSymbols.Find (a.Name.Text) switch {
+         NVarDecl v => v.Type,
+         NFnDecl f => f.Return, // A function assignment statement like Fibo := prod
+         _ => throw new ParseException (a.Name, "Unknown variable")
+      };
       a.Expr.Accept (this);
-      a.Expr = AddTypeCast (a.Name, a.Expr, v.Type);
-      return v.Type;
+      a.Expr = AddTypeCast (a.Name, a.Expr, nType);
+      return nType;
    }
    
    NExpr AddTypeCast (Token token, NExpr source, NType target) {
@@ -167,6 +179,7 @@ public class TypeAnalyze : Visitor<NType> {
       mSymbols.Find (d.Name.Text) switch {
          NVarDecl v => d.Type = v.Type,
          NConstDecl c => d.Type = c.Value.Accept (this),
+         NFnDecl f => d.Type = f.Return, // A function can be recursive
          _ => throw new ParseException (d.Name, "Unknown variable")
       };
 

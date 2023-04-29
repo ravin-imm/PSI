@@ -3,9 +3,9 @@ var
   i, j, k: integer;
   p, q, r: real;
 
-function Sqr (i: real) : real;
+function Sqr (a: real) : real;
 begin 
-  Sqr := i * i;
+  Sqr := a * a;
 end;
 
 begin

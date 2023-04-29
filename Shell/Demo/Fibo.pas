@@ -4,7 +4,7 @@ var
 
 function Fibo (n: integer) : integer;
 var 
-  i, prod: integer;
+  i, prod, Fibo: integer;
 begin 
   prod := 1;
   for i := 1 to n do begin
