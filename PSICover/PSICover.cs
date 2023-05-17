@@ -149,8 +149,11 @@ class Analyzer {
    // Generate output HTML (colored source code with hit / unhit areas marked)
    void GenerateOutputs () {
       ulong[] hits = File.ReadAllLines ($"{Dir}/hits.txt").Select (ulong.Parse).ToArray ();
-      var files = mBlocks.Select (a => a.File).Distinct ().ToArray ();
-      foreach (var file in files) {
+      var files = mBlocks.Select (a => a.File).Distinct ().ToArray (); int nLen = files.Length;
+
+      var sA = new (string File, int Blocks, int Hits, double Coverage) [nLen];
+      for (int a = 0; a < nLen; a++) {
+         var file = files[a];
          var blocks = mBlocks.Where (a => a.File == file)
                              .OrderBy (a => a.SPosition)
                              .ThenByDescending (a => a.EPosition)
@@ -163,11 +166,20 @@ class Analyzer {
          var code = File.ReadAllLines (file);
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
+         int nHits = 0;
          foreach (var block in blocks) {
             bool hit = hits[block.Id] > 0;
-            string tag = $"<span class=\"{(hit ? "hit" : "unhit")}\">";
-            code[block.ELine] = code[block.ELine].Insert (block.ECol, "</span>");
-            code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            if (hit) nHits++;
+            string tag = $"<span {(hit ? $"class=\"hit\" title=\"Hits: {hits[block.Id]}\"" : "class=\"unhit\"")}>";
+            if (block.ELine != block.SLine) {
+               for (int start = block.ELine; start >= block.ELine; start--) {
+                  var s = code[start];
+                  code[start] = $"{s.Insert (s.IndexOf (s.FirstOrDefault (c => !char.IsWhiteSpace (c))), tag)}</span>";
+               }
+            } else {
+               code[block.ELine] = code[block.ELine].Insert (block.ECol, "</span>");
+               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            }
          }
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
 
@@ -181,8 +193,32 @@ class Analyzer {
             </pre></body></html>
             """;
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
-         File.WriteAllText (htmlfile, html);
+         File.WriteAllText (htmlfile, html); int nC = blocks.Count;
+         sA[a] = (Path.GetFileName (file), nC, nHits, Math.Round (100.0 * nHits / nC, 1));
       }
+      string summaryhtml = $$"""
+         <html><head><style>
+           table, th, td {
+           border: 1px solid black;
+           border-collapse: collapse;
+           padding: 3px;
+         }
+         </style></head>
+         <body><pre>
+         <table>
+          <caption style="text-align:Left"><span style="font-weight:bold">Coverage Summary</span></caption>
+          <tr>
+           <th>File</th>
+           <th>Blocks</th>
+           <th>Covered Blocks</th>
+           <th>Coverage</th>
+          </tr>
+          {{string.Join ("\r\n", sA.OrderBy (a => a.Coverage)
+          .Select (a => $"<tr><td>{a.File}</td><td>{a.Blocks}</td><td>{a.Hits}</td><td>{a.Coverage}</td></tr>"))}}
+         </table>
+         </pre></body></html>
+         """;
+      File.WriteAllText ($"{Dir}/HTML/CoverageSummary.html", summaryhtml);
       int cBlocks = mBlocks.Count, cHit = hits.Count (a => a > 0);
       double percent = Math.Round (100.0 * cHit / cBlocks, 1);
       Console.WriteLine ($"Coverage: {cHit}/{cBlocks}, {percent}%");
