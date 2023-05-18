@@ -172,7 +172,7 @@ class Analyzer {
             if (hit) nHits++;
             string tag = $"<span {(hit ? $"class=\"hit\" title=\"Hits: {hits[block.Id]}\"" : "class=\"unhit\"")}>";
             if (block.ELine != block.SLine) {
-               for (int start = block.ELine; start >= block.ELine; start--) {
+               for (int start = block.ELine; start >= block.SLine; start--) {
                   var s = code[start];
                   code[start] = $"{s.Insert (s.IndexOf (s.FirstOrDefault (c => !char.IsWhiteSpace (c))), tag)}</span>";
                }
