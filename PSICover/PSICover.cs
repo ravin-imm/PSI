@@ -166,19 +166,17 @@ class Analyzer {
          var code = File.ReadAllLines (file);
          for (int i = 0; i < code.Length; i++)
             code[i] = code[i].Replace ('<', '\u00ab').Replace ('>', '\u00bb');
-         int nHits = 0;
+         int cHits = 0;
          foreach (var block in blocks) {
             bool hit = hits[block.Id] > 0;
-            if (hit) nHits++;
+            if (hit) cHits++;
             string tag = $"<span {(hit ? $"class=\"hit\" title=\"Hits: {hits[block.Id]}\"" : "class=\"unhit\"")}>";
-            if (block.ELine != block.SLine) {
-               for (int start = block.ELine; start >= block.SLine; start--) {
-                  var s = code[start];
-                  code[start] = $"{s.Insert (s.IndexOf (s.FirstOrDefault (c => !char.IsWhiteSpace (c))), tag)}</span>";
-               }
-            } else {
-               code[block.ELine] = code[block.ELine].Insert (block.ECol, "</span>");
-               code[block.SLine] = code[block.SLine].Insert (block.SCol, tag);
+            for (int i = block.SLine; i <= block.ELine; i++) {
+               bool start = i == block.SLine, end = i == block.ELine; 
+               var s = code[i];
+               int sCol = start ? block.SCol : s.IndexOf (s.FirstOrDefault (c => !char.IsWhiteSpace (c)));
+               int eCol = end ? block.ECol : code[i].Length;
+               code[i] = s.Insert (eCol, $"</span>").Insert (sCol, tag);
             }
          }
          string htmlfile = $"{Dir}/HTML/{Path.GetFileNameWithoutExtension (file)}.html";
@@ -194,7 +192,7 @@ class Analyzer {
             """;
          html = html.Replace ("\u00ab", "&lt;").Replace ("\u00bb", "&gt;");
          File.WriteAllText (htmlfile, html); int nC = blocks.Count;
-         sA[a] = (Path.GetFileName (file), nC, nHits, Math.Round (100.0 * nHits / nC, 1));
+         sA[a] = (Path.GetFileName (file), nC, cHits, Math.Round (100.0 * cHits / nC, 1));
       }
       string summaryhtml = $$"""
          <html><head><style>
