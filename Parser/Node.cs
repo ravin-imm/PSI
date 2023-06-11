@@ -104,7 +104,13 @@ public record NRepeatStmt (NStmt[] Stmts, NExpr Condition) : NStmt {
 }
 
 // Read statement
-public record NReadStmt (Token[] Vars) : NStmt {
+public record NReadStmt (Token[] Vars, bool OnePerLn) : NStmt {
+   public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
+   public override void Accept (Visitor visitor) => visitor.Visit (this);
+}
+
+// Break statement
+public record NBreakStmt (Token Token, Token? Depth) : NStmt {
    public override T Accept<T> (Visitor<T> visitor) => visitor.Visit (this);
    public override void Accept (Visitor visitor) => visitor.Visit (this);
 }

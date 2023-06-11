@@ -8,6 +8,7 @@ using static NType;
 public class ILCodeGen : Visitor {
    // Generated code is gathered heres
    public readonly StringBuilder S = new ();
+   List<string> LoopDepthStack = new ();
 
    public override void Visit (NProgram p) {
       Out (".assembly extern System.Runtime { .publickeytoken = (B0 3F 5F 7F 11 D5 0A 3A) .ver 7:0:0:0 }");
@@ -114,8 +115,16 @@ public class ILCodeGen : Visitor {
       Out ($"   {labl2}:");
    }
 
+   public override void Visit (NBreakStmt b) {
+      int n = b.Depth != null ? int.Parse (b.Depth.Text) : 1;
+      if (n < 1 || LoopDepthStack.Count < n || n > LoopDepthStack.Count)
+         throw new ParseException (b.Token, "Invalid break statement");
+      Out ($"    br {LoopDepthStack[^n]}");
+   }
+
    public override void Visit (NForStmt f) { 
       string labl1 = NextLabel (), labl2 = NextLabel ();
+      InLoop ();
       f.Start.Accept (this);
       StoreVar (f.Var);
       Out ($"    br {labl2}");
@@ -130,26 +139,44 @@ public class ILCodeGen : Visitor {
       f.End.Accept (this);
       Out (f.Ascending ? "    cgt" : "    clt");
       Out ($"    brfalse {labl1}");
+      OutLoop ();
    }
 
-   public override void Visit (NReadStmt r) => throw new NotImplementedException ();
+   public override void Visit (NReadStmt r) {
+      foreach (var v in r.Vars) {
+         var vd = (NVarDecl)mSymbols.Find (v)!;
+         Out ("    call string [System.Console]System.Console::ReadLine ()");
+         var type = TMap[vd.Type];
+         if (type != "string") {
+            if (!ConvertToMap.TryGetValue (type, out var map)) throw new NotImplementedException ();
+            Out ($"    call {type} [System.Runtime]System.Convert::{map}(string)");
+         }
+         StoreVar (v);
+      }
+   }
+   static Dictionary<string, string> ConvertToMap = new () { ["int32"] = "ToInt32", ["float64"] = "ToDouble", ["bool"] = "ToBoolean", ["char"] = "ToChar" };
+
 
    public override void Visit (NWhileStmt w) {
       string lab1 = NextLabel (), lab2 = NextLabel ();
+      InLoop ();
       Out ($"    br {lab2}");
       Out ($"  {lab1}:");
       w.Body.Accept (this);
       Out ($"  {lab2}:");
       w.Condition.Accept (this);
       Out ($"    brtrue {lab1}");
+      OutLoop ();
    }
 
    public override void Visit (NRepeatStmt r) {
       string lab = NextLabel ();
+      InLoop ();
       Out ($"  {lab}:");
       Visit (r.Stmts);
       r.Condition.Accept (this);
       Out ($"    brfalse {lab}");
+      OutLoop ();
    }
    string NextLabel () => $"IL_{++mLabel:D4}";
    int mLabel;
@@ -219,6 +246,10 @@ public class ILCodeGen : Visitor {
    }
 
    // Helpers ......................................
+   
+   void InLoop () => LoopDepthStack.Add (NextLabel ());
+   void OutLoop () => Out ($"    {LoopDepthStack.RemoveLast ()}:");
+
    // Append a line to output (followed by a \n newline)
    void CallFunction (Token name, NExpr[] args) {
       Visit (args);

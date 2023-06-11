@@ -33,6 +33,15 @@ public static class Extensions {
       foreach (var node in nodes) result = node.Accept (visitor);
       return result;
    }
+
+   /// <summary>Removes and returns the last element from a list.</summary>
+   /// If the list is empty, throws an exception. 
+   /// <param name="list">The (non empty) list from which to remove the last element</param>
+   public static T RemoveLast<T> (this IList<T> list) {
+      int n = list.Count - 1;
+      T retval = list[n]; list.RemoveAt (n);
+      return retval;
+   }
 }
 
 public class ParseException : Exception {

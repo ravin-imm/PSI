@@ -89,7 +89,7 @@ public class Parser {
    #region Statements ---------------------------------------
    // statement         =  write-stmt | read-stmt | assign-stmt | call-stmt |
    //                      goto-stmt | if-stmt | while-stmt | repeat-stmt |
-   //                      compound-stmt | for-stmt | case-stmt
+   //                      compound-stmt | for-stmt | case-stmt | break-stmt
    NStmt Stmt () {
       if (Match (WRITE, WRITELN)) return WriteStmt ();
       if (Match (IDENT)) {
@@ -99,9 +99,10 @@ public class Parser {
       if (Match (IF)) return IfStmt ();
       if (Match (FOR)) return ForStmt ();
       if (Peek (BEGIN)) return CompoundStmt ();
-      if (Match (READ)) return ReadStmt ();
+      if (Match (READ, READLN)) return ReadStmt ();
       if (Match (WHILE)) return WhileStmt ();
       if (Match (REPEAT)) return RepeatStmt ();
+      if (Match (BREAK)) return BreakStmt ();
       Unexpected ();
       return null!;
    }
@@ -140,7 +141,14 @@ public class Parser {
       if (!Peek (CLOSE)) names.Add (Expect (IDENT));
       while (Match (COMMA)) names.Add (Expect (IDENT));
       Expect (CLOSE); Expect (SEMI);
-      return new (names.ToArray ());
+      return new (names.ToArray (), Prev.Kind == READLN);
+   }
+
+   // break-stmt = "break" [INTEGER]
+   NBreakStmt BreakStmt () {
+      Token? tok = mPrevious, to = null;
+      if (Peek (L_INTEGER)) to = Expect (L_INTEGER);
+      return new (tok, to);
    }
 
    // while-stmt = "while" condition "do" statement ";" .
